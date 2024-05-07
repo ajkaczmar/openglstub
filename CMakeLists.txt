@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8.12)
+cmake_minimum_required(VERSION 3.5.1)
 
 project(playground)
 set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "Build the GLFW example programs")
@@ -10,7 +10,7 @@ include_directories(${PROJECT_SOURCE_DIR})
 include_directories("glfw/deps") # for glad
 include_directories("glfw/include")
 include_directories("thirdparty")
-add_executable(${PROJECT_NAME} main.cpp glfw/deps/glad.c)
+add_executable(${PROJECT_NAME} main.cpp)
 if (MSVC)
     add_definitions( "-D _CRT_SECURE_NO_WARNINGS" )
 endif()

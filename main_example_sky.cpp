@@ -5,8 +5,11 @@
 #include <stdio.h>
 #include <math.h>
 #include <assert.h>
-#include "glad/glad.h"
-#include "GLFW/glfw3.h"
+#define GLAD_GL_IMPLEMENTATION
+#include <glad/gl.h>
+#define GLFW_INCLUDE_NONE
+#include <GLFW/glfw3.h>
+
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
@@ -331,7 +334,7 @@ int main(int argc, char* argv[])
 	GLFWwindow *window = glfwCreateWindow(1280, 800, "Spherical Harmonics Playground", NULL, NULL);
 	if (!window) return 1;
 	glfwMakeContextCurrent(window);
-	gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
+    gladLoadGL(glfwGetProcAddress);
 	glfwSwapInterval(1);
 
 	scene_t scene = {0};
