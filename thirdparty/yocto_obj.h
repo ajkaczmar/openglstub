@@ -1498,7 +1498,7 @@ yo_load_objbin(const char* filename, bool ext) {
 
     int magic = 0;
     yo__fread_binintn(file, &magic, 1);
-    if (magic != yo__binmagic) return false;
+    if (magic != yo__binmagic) return NULL;
 
     yo_scene* scene = (yo_scene*)calloc(1, sizeof(yo_scene));
 
