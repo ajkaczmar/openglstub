@@ -12,17 +12,21 @@
 
 extern "C"
 {
-	#define YO_IMPLEMENTATION
-	#define YO_NOIMG
-	#include "yocto_obj.h"
+#define YO_IMPLEMENTATION
+#define YO_NOIMG
+#include "yocto_obj.h"
 }
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
 #include "imgui.cpp"
+#include "imgui_impl_glfw.cpp"
+#include "imgui_impl_opengl3.cpp"
 #include "imgui_draw.cpp"
-#include "imgui_impl_glfw_gl3.cpp"
+#include "imgui_demo.cpp"
+#include "imgui_widgets.cpp"
+#include "imgui_tables.cpp"
 
 #include "m_math.h"
 
@@ -109,24 +113,24 @@ typedef struct
 
 } scene_t;
 
-static int initScene(scene_t *scene)
+static int initScene(scene_t* scene)
 {
 	return 1;
 }
 
-static void drawScene(scene_t *scene, float *view, float *projection)
+static void drawScene(scene_t* scene, float* view, float* projection)
 {
-	glClear(GL_DEPTH_BUFFER_BIT);
+	glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LEQUAL);
 	//glDisable(GL_CULL_FACE);
 }
 
-static void destroyScene(scene_t *scene)
+static void destroyScene(scene_t* scene)
 {
 }
 
-static void fpsCameraViewMatrix(GLFWwindow *window, float *view, bool ignoreInput)
+static void fpsCameraViewMatrix(GLFWwindow* window, float* view, bool ignoreInput)
 {
 	// initial camera config
 	static float position[] = { 0.0f, 0.0f, 3.0f };
@@ -175,7 +179,7 @@ static void fpsCameraViewMatrix(GLFWwindow *window, float *view, bool ignoreInpu
 	m_mul44(view, inverseRotation, inverseTranslation); // = inverse(translation(position) * rotationYX);
 }
 
-static void error_callback(int error, const char *description)
+static void error_callback(int error, const char* description)
 {
 	fprintf(stderr, "Error: %s\n", description);
 }
@@ -184,6 +188,31 @@ int main(int argc, char* argv[])
 {
 	glfwSetErrorCallback(error_callback);
 	if (!glfwInit()) return 1;
+
+	// Decide GL+GLSL versions
+#if defined(IMGUI_IMPL_OPENGL_ES2)
+	// GL ES 2.0 + GLSL 100
+	const char* glsl_version = "#version 100";
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 2);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
+	glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_ES_API);
+#elif defined(__APPLE__)
+	// GL 3.2 + GLSL 150
+	const char* glsl_version = "#version 150";
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
+	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);  // 3.2+ only
+	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);            // Required on Mac
+#else
+	// GL 3.0 + GLSL 130
+	const char* glsl_version = "#version 130";
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
+	//glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);  // 3.2+ only
+	//glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);            // 3.0+ only
+#endif
+
+
 	glfwWindowHint(GLFW_RED_BITS, 8);
 	glfwWindowHint(GLFW_GREEN_BITS, 8);
 	glfwWindowHint(GLFW_BLUE_BITS, 8);
@@ -198,12 +227,31 @@ int main(int argc, char* argv[])
 	glfwWindowHint(GLFW_SAMPLES, 4);
 	GLFWwindow* window = glfwCreateWindow(1280, 800, "Spherical Harmonics Playground", NULL, NULL);
 	if (!window) return 1;
+
 	glfwMakeContextCurrent(window);
-    gladLoadGL(glfwGetProcAddress);
+	gladLoadGL(glfwGetProcAddress);
 
 	glfwSwapInterval(1);
 
-	ImGui_ImplGlfwGL3_Init(window, true);
+
+	// Setup Dear ImGui context
+	IMGUI_CHECKVERSION();
+	ImGui::CreateContext();
+	ImGuiIO& io = ImGui::GetIO(); (void)io;
+	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
+	io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+
+	// Setup Dear ImGui style
+	ImGui::StyleColorsDark();
+	//ImGui::StyleColorsLight();
+
+	// Setup Platform/Renderer backends
+	ImGui_ImplGlfw_InitForOpenGL(window, true);
+#ifdef __EMSCRIPTEN__
+	ImGui_ImplGlfw_InstallEmscriptenCanvasResizeCallback("#canvas");
+#endif
+	ImGui_ImplOpenGL3_Init(glsl_version);
+
 
 	scene_t scene = { };
 	if (!initScene(&scene))
@@ -224,9 +272,13 @@ int main(int argc, char* argv[])
 				break;
 			}
 		}
-		ImGui_ImplGlfwGL3_NewFrame();
+		// Start the Dear ImGui frame
+		ImGui_ImplOpenGL3_NewFrame();
+		ImGui_ImplGlfw_NewFrame();
+		ImGui::NewFrame();
 
-		ImGui::SetNextWindowSize(ImVec2(300, 300), ImGuiSetCond_FirstUseEver);
+		ImGui::SetNextWindowSize(ImVec2(300, 300), ImGuiCond_FirstUseEver);
+
 		static bool show_another_window = true;
 		ImGui::Begin("Coefficients", &show_another_window);
 		for (int i = 0; i < 9; i++)
@@ -239,20 +291,30 @@ int main(int argc, char* argv[])
 		ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 		ImGui::End();
 
+		// Rendering
+		ImGui::Render();
+
 		int w, h;
 		glfwGetFramebufferSize(window, &w, &h);
 		glViewport(0, 0, w, h);
+
+
 		float view[16], projection[16];
 		fpsCameraViewMatrix(window, view, ImGui::IsAnyItemActive());
 		m_perspective44(projection, 45.0f, (float)w / (float)h, 0.01f, 100.0f);
 		drawScene(&scene, view, projection);
 
-		ImGui::Render();
+		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
 		glfwSwapBuffers(window);
 	}
 
 	destroyScene(&scene);
-	ImGui_ImplGlfwGL3_Shutdown();
+	ImGui_ImplOpenGL3_Shutdown();
+	ImGui_ImplGlfw_Shutdown();
+	ImGui::DestroyContext();
+
+
 	glfwDestroyWindow(window);
 	glfwTerminate();
 	return 0;
