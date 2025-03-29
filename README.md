@@ -19,3 +19,17 @@ Note that it needs to be cloned with ```--recursive``` option because glfw is ad
 ```
 git clone --recursive https://github.com/ajkaczmar/openglstub.git
 ```
+
+Cmake generaton:
+
+```
+cmake -G Xcode .
+```
+
+```
+cmake -G "Visual Studio 17 2022" .
+```
+
+```
+cmake -G "Visual Studio 16 2019" .
+```
